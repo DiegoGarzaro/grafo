@@ -1,10 +1,10 @@
 /***********************************
 Grafos
 
-Autor: Arthur M. Amaral
-       Diego R. Garzaro
-       Eder E. Hamasaki
-       
+Autor:  Arthur M. Amaral
+		Diego R. Garzaro
+		Eder E. Hamasaki
+
 Criado em: 15/11/2017
 ***********************************/
 
@@ -45,7 +45,7 @@ Grafo *cria_grafo(int no);
 Vizinho *cria_vizinho(int no, int peso, char cor[20]);
 int cria_conexao(Grafo *gr, int no_ini, int no_fim, int peso, char cor[20]);
 void inicializa_grafo(Grafo *g, int *d, int *p, int s);
-void relaxa(Grafo *g, int *d, int *p, int u, int v, char last_point[20]);
+void relaxa(Grafo *g, int *d, int *p, int u, int v, int in);
 int *dijkstra(Grafo *g, int in, int fim, int caminho[TAM_GRAFO]);
 int existe_aberto(Grafo *g, int *aberto);
 int menorDist(Grafo *g, int *aberto, int *d);
@@ -79,7 +79,7 @@ int main(){
 	
 	cria_conexao(gr,5,17,10,"Azul");
 	cria_conexao(gr,5,14,9,"Azul");
-	cria_conexao(gr,10,12,17,"Azul");
+	cria_conexao(gr,9,12,17,"Azul");
 	cria_conexao(gr,9,13,7,"Azul");
 	cria_conexao(gr,13,14,9,"Azul");
 
@@ -88,9 +88,6 @@ int main(){
 	cria_conexao(gr,8,9,11,"Verde");
 	cria_conexao(gr,9,10,13,"Verde");
 	cria_conexao(gr,10,11,16,"Verde");
-
-
-//	imprime_grafo(gr);
 
 	printf("\n\n");
 
@@ -115,11 +112,7 @@ int main(){
 
 	imprime_caminho(gr,caminho);
 
-	printf("Tempo Total: %d minutos\n", r[fim]);
-
-//	for(i=1;(in+i)<fim;i++){
-//		printf("Distancia entre os pontos: %d -> %d) = %d\n", in, (in+i), r[(in+i)-1]);
-//	}
+//	printf("Tempo Total: %d minutos\n", r[fim]);
 
 	return 0;
 }
@@ -169,21 +162,35 @@ void inicializa_grafo(Grafo *g, int *d, int *p, int s){
 	d[s] = 0;
 }
 
-void relaxa(Grafo *g, int *d, int *p, int u, int v, char last_point[20]){
-	static char cor_ant[3];
-	static int flag=0;
+void relaxa(Grafo *g, int *d, int *p, int u, int v, int in){
+	int op=0;
 	int adicional = 0;
+	Vizinho *ant = g->arranj_nos[u].lista_conexao;
+	if(u==in) op=v;
+	else op=p[u];
+	while(ant && ant->no != op) {
+		ant = ant->prox;
+	}
 	Vizinho *ad = g->arranj_nos[u].lista_conexao;
-	while(ad && ad->no != v) {
+	while(ad && ad->no != v){
 		ad = ad->prox;
 	}
+
+	if(p[u]!=0 && ant->cor[3]!=ad->cor[3]){
+		adicional = 6;
+	}
+	else{
+		adicional = 0;
+	}
+
+//	printf("No Atual: %d, Cor Atual: %s... No ant: %d, cor: %s - Adicional: %d\n", ad->no, ad->cor, ant->no, ant->cor, adicional);
+
 	if(ad){
-		if(d[v] > d[u] + ad->peso + adicional){
+		if(d[v] > (d[u] + ad->peso + adicional)){
 			d[v] = d[u] + ad->peso + adicional;
 			p[v] = u;
 		}
 	}
-	printf("Caminho Novo: %d %s %d\n", ad->no, ad->cor, d[v]);
 }
 
 int *dijkstra(Grafo *g, int in, int fim, int caminho[TAM_GRAFO]){
@@ -199,13 +206,11 @@ int *dijkstra(Grafo *g, int in, int fim, int caminho[TAM_GRAFO]){
 	while(existe_aberto(g,aberto)){
 		int u = menorDist(g,aberto,d);
 		aberto[u] = false;
-//		printf("%d: ", u+1);
 		Vizinho *ad = g->arranj_nos[u].lista_conexao;
 		while(ad){
-			relaxa(g,d,p,u,ad->no,cor_ant);
+			relaxa(g,d,p,u,ad->no,in);
 			ad = ad->prox;
 		}
-		printf("\n");
 		if(!existe_aberto(g,aberto)){
 		int j, k, z=0;
 				caminho[TAM_GRAFO]=fim;
@@ -264,9 +269,19 @@ void imprime_caminho(Grafo *gr, int caminho[TAM_GRAFO]){
 	for(i=0;i<z;i++){	// Loop
 		Vizinho *ad = gr->arranj_nos[caminho[k+i]].lista_conexao;										// Cria variável tipo estrutura dos pontos adjacentes (vizinhos)
 		while(ad->no != caminho[k+(i+1)] && i<z){														// Enquanto ponto adjacente != do proximo ponto do grafo
+//			printf("n%d(%d - %s) ", ad->no, ad->peso, ad->cor);
 			ad=ad->prox;																				// Muda de adjacente
 		}
 		if(i==0) linha_ant[3] = ad->cor[3];
-			printf("%d --%s(%d)--> %d\n", caminho[k+i], ad->cor, ad->peso, caminho[k+(i+1)]);		//Imprime bonito
+		if(ad->cor[3]==linha_ant[3]){
+			dist = dist + ad->peso;
+			printf("%d --%s(%d)--> %d\n", caminho[k+i], ad->cor, ad->peso, caminho[k+(i+1)]);
+		}
+		else{
+			linha_ant[3] = ad->cor[3];
+			dist = dist + 6 + ad->peso;
+			printf("%d --%s(%d+6)--> %d\n", caminho[k+i], ad->cor, ad->peso, caminho[k+(i+1)]);
+		}
 	}
+	printf("\nTempo Total: %d minutos\n", dist);
 }
